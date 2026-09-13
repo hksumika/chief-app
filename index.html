@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>チーフ支援システム</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --border: #e2e8f0;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; }
+
+    header { background: var(--primary); color: white; padding: 12px 16px; text-align: center; font-weight: bold; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
+
+    /* 設定エリア */
+    .config-card { background: var(--card-bg); margin: 12px; padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .config-card h2 { font-size: 1rem; margin-bottom: 12px; border-bottom: 2px solid var(--primary); padding-bottom: 4px; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 4px; }
+    .form-group input, .form-group select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+    .form-group input[type="text"], .form-group input[type="url"] { width: 100%; }
+    
+    .time-picker-group { display: flex; gap: 8px; align-items: center; }
+    .time-picker-group select { flex: 1; }
+
+    .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; width: 100%; cursor: pointer; }
+    .btn-secondary { background: #64748b; margin-top: 8px; }
+
+    /* アラームマスター制御バー */
+    .alarm-master-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+    .alarm-toggle-btn {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: none;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: white;
+    }
+    .alarm-toggle-btn.on { background: var(--success); }
+    .alarm-toggle-btn.off { background: #94a3b8; }
+
+    /* 公演情報サマリー */
+    .event-info { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; background: #e0f2fe; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85rem; }
+
+    /* タブナビゲーション */
+    .tab-nav { display: flex; position: sticky; top: 0; background: white; border-bottom: 1px solid var(--border); z-index: 10; }
+    .tab-btn { flex: 1; padding: 12px; text-align: center; border: none; background: none; font-weight: bold; font-size: 0.95rem; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* タブコンテンツ */
+    .tab-content { display: none; padding: 12px; }
+    .tab-content.active { display: block; }
+
+    /* スプレッドシート iframe */
+    .iframe-container { width: 100%; height: 75vh; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    iframe { width: 100%; height: 100%; border: none; }
+
+    /* ToDo フェーズ */
+    .phase-section { background: var(--card-bg); border-radius: 10px; padding: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .phase-title { font-size: 1rem; font-weight: bold; color: var(--primary); margin-bottom: 8px; border-left: 4px solid var(--primary); padding-left: 8px; }
+    
+    .todo-item { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: #fff; }
+    .todo-main { display: flex; align-items: center; gap: 10px; }
+    .todo-main input[type="checkbox"] { width: 20px; height: 20px; }
+    .todo-text { flex: 1; font-size: 0.95rem; word-break: break-all; }
+    .todo-text.completed { text-decoration: line-through; color: #94a3b8; }
+    
+    .timer-control { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; background: #f1f5f9; padding: 6px 10px; border-radius: 6px; }
+    .timer-display { font-weight: bold; color: var(--danger); min-width: 60px; margin-left: auto; text-align: right; }
+
+    /* ToDo追加フォーム */
+    .add-todo-form { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--border); }
+    .add-todo-row { display: flex; gap: 6px; }
+    .add-todo-form input[type="text"] { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; }
+    .add-todo-form input[type="time"] { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; }
+    .add-todo-form button { background: var(--success); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
+
+    .no-task { font-size: 0.85rem; color: #94a3b8; text-align: center; padding: 8px 0; }
+    .hidden { display: none !important; }
+
+    /* 全画面アラームオーバーレイ */
+    #alarm-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(239, 68, 68, 0.95);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 24px;
+      text-align: center;
+      animation: pulse-bg 1s infinite alternate;
+    }
+    @keyframes pulse-bg {
+      0% { background: rgba(239, 68, 68, 0.95); }
+      100% { background: rgba(185, 28, 28, 0.98); }
+    }
+    #alarm-overlay h1 { font-size: 2rem; margin-bottom: 12px; }
+    #alarm-overlay p { font-size: 1.2rem; margin-bottom: 8px; }
+    #alarm-overlay .alarm-task { font-size: 1.5rem; font-weight: bold; background: white; color: #1e293b; padding: 12px 20px; border-radius: 8px; margin: 16px 0; width: 100%; max-width: 320px; }
+    #alarm-overlay button {
+      background: white; color: var(--danger); border: none; padding: 14px 28px;
+      font-size: 1.1rem; font-weight: bold; border-radius: 30px; cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span>チーフ支援システム</span>
+  <button type="button" id="header-alarm-btn" class="alarm-toggle-btn on" onclick="toggleAlarmMaster()">🔔 アラーム: ON</button>
+</header>
+
+<!-- 全画面アラームモーダル -->
+<div id="alarm-overlay" class="hidden">
+  <h1>⏰ 時間です！</h1>
+  <p id="alarm-phase-display">フェーズ: -</p>
+  <div id="alarm-task-display" class="alarm-task">-</div>
+  <button type="button" onclick="dismissAlarm()">確認して閉じる</button>
+</div>
+
+<!-- 初期登録／編集フォーム -->
+<div id="config-card" class="config-card">
+  <h2>公演基本情報の登録</h2>
+  <div class="form-group">
+    <label>公演名</label>
+    <input type="text" id="input-event-name" placeholder="例: 夏のスペシャルライブ">
+  </div>
+  
+  <div class="form-group">
+    <label>開場時間（15分刻み）</label>
+    <div class="time-picker-group">
+      <select id="open-hour"></select> 時
+      <select id="open-min">
+        <option value="00">00</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+        <option value="45">45</option>
+      </select> 分
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>開演時間（15分刻み）</label>
+    <div class="time-picker-group">
+      <select id="start-hour"></select> 時
+      <select id="start-min">
+        <option value="00">00</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+        <option value="45">45</option>
+      </select> 分
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>終演時間（15分刻み）</label>
+    <div class="time-picker-group">
+      <select id="end-hour"></select> 時
+      <select id="end-min">
+        <option value="00">00</option>
+        <option value="15">15</option>
+        <option value="30">30</option>
+        <option value="45">45</option>
+      </select> 分
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>スプレッドシートURL</label>
+    <input type="url" id="input-sheet-url">
+  </div>
+  <button type="button" class="btn" id="save-btn">保存して開始</button>
+</div>
+
+<!-- メインコンテンツ -->
+<div id="main-app" class="hidden">
+  
+  <div class="config-card" style="margin-bottom: 0;">
+    <div class="event-info">
+      <div><strong>公演:</strong> <span id="info-event-name">-</span></div>
+      <div><strong>開場:</strong> <span id="info-open-time">-</span></div>
+      <div><strong>開演:</strong> <span id="info-start-time">-</span></div>
+      <div><strong>終演:</strong> <span id="info-end-time">-</span></div>
+    </div>
+    <button type="button" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; width: auto;" onclick="toggleConfig()">設定を変更</button>
+  </div>
+
+  <!-- タブナビ -->
+  <div class="tab-nav">
+    <button type="button" class="tab-btn active" onclick="switchTab('sheet')">配置表 (スプレッドシート)</button>
+    <button type="button" class="tab-btn" onclick="switchTab('todo')">進行 ToDo</button>
+  </div>
+
+  <!-- タブ1: スプレッドシート -->
+  <div id="tab-sheet" class="tab-content active">
+    <div class="iframe-container">
+      <iframe id="sheet-frame" src=""></iframe>
+    </div>
+  </div>
+
+  <!-- タブ2: ToDoリスト -->
+  <div id="tab-todo" class="tab-content">
+    <div class="alarm-master-bar">
+      <span style="font-size: 0.9rem; font-weight: bold;">一括アラーム機能</span>
+      <button type="button" id="body-alarm-btn" class="alarm-toggle-btn on" onclick="toggleAlarmMaster()">🔔 アラーム: ON</button>
+    </div>
+    <div id="todo-container"></div>
+  </div>
+
+</div>
+
+<script>
+  const DEFAULT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_RbJJ3EAwbV3yOH7y7Co1ThGGL5L3d_IQcASN0GyU_U/edit?gid=757896062#gid=757896062";
+  const phases = ["準備時間", "開場中", "開演中", "終演時", "片付け時"];
+
+  let appData = {
+    eventName: "", openTime: "", startTime: "", endTime: "",
+    sheetUrl: DEFAULT_SHEET_URL,
+    alarmEnabled: true,
+    todos: {
+      "準備時間": [],
+      "開場中": [],
+      "開演中": [],
+      "終演時": [],
+      "片付け時": []
+    }
+  };
+
+  let alarmInterval = null;
+
+  function initHourSelects() {
+    ['open-hour', 'start-hour', 'end-hour'].forEach(id => {
+      const select = document.getElementById(id);
+      select.innerHTML = '';
+      for (let i = 0; i < 24; i++) {
+        const val = String(i).padStart(2, '0');
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = val;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  function getTimeFromPicker(prefix) {
+    const h = document.getElementById(`${prefix}-hour`).value;
+    const m = document.getElementById(`${prefix}-min`).value;
+    return `${h}:${m}`;
+  }
+
+  function setPickerFromTime(prefix, timeStr) {
+    if (!timeStr || !timeStr.includes(':')) return;
+    const [h, m] = timeStr.split(':');
+    document.getElementById(`${prefix}-hour`).value = h || "00";
+    document.getElementById(`${prefix}-min`).value = m || "00";
+  }
+
+  function safeSaveData() {
+    try {
+      if (window.localStorage) {
+        window.localStorage.setItem('chief_app_data', JSON.stringify(appData));
+      }
+    } catch (e) {}
+  }
+
+  function safeLoadData() {
+    try {
+      if (window.localStorage) {
+        const saved = window.localStorage.getItem('chief_app_data');
+        if (saved) return JSON.parse(saved);
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    initHourSelects();
+    document.getElementById('save-btn').addEventListener('click', saveConfig);
+
+    const saved = safeLoadData();
+    if (saved) {
+      appData = saved;
+      if (!appData.sheetUrl) appData.sheetUrl = DEFAULT_SHEET_URL;
+      if (appData.alarmEnabled === undefined) appData.alarmEnabled = true;
+      applyConfig();
+      document.getElementById('config-card').classList.add('hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+    } else {
+      document.getElementById('input-sheet-url').value = DEFAULT_SHEET_URL;
+    }
+    updateAlarmUI();
+    renderTodos();
+    startTimerChecker();
+  });
+
+  function toggleAlarmMaster() {
+    appData.alarmEnabled = !appData.alarmEnabled;
+    updateAlarmUI();
+    safeSaveData();
+  }
+
+  function updateAlarmUI() {
+    const isON = appData.alarmEnabled;
+    ['header-alarm-btn', 'body-alarm-btn'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.className = `alarm-toggle-btn ${isON ? 'on' : 'off'}`;
+        btn.innerText = isON ? '🔔 アラーム: ON' : '🔕 アラーム: OFF';
+      }
+    });
+  }
+
+  function saveConfig() {
+    appData.eventName = document.getElementById('input-event-name').value;
+    appData.openTime = getTimeFromPicker('open');
+    appData.startTime = getTimeFromPicker('start');
+    appData.endTime = getTimeFromPicker('end');
+    appData.sheetUrl = document.getElementById('input-sheet-url').value || DEFAULT_SHEET_URL;
+
+    safeSaveData();
+    applyConfig();
+
+    document.getElementById('config-card').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+  }
+
+  function toggleConfig() {
+    document.getElementById('config-card').classList.toggle('hidden');
+  }
+
+  function applyConfig() {
+    document.getElementById('info-event-name').innerText = appData.eventName || '未設定';
+    document.getElementById('info-open-time').innerText = appData.openTime || '--:--';
+    document.getElementById('info-start-time').innerText = appData.startTime || '--:--';
+    document.getElementById('info-end-time').innerText = appData.endTime || '--:--';
+    
+    let url = appData.sheetUrl;
+    if (url.includes('google.com/spreadsheets')) {
+      if (!url.includes('htmlview') && !url.includes('pubhtml')) {
+        url = url.replace(/\/edit.*$/, '/htmlview');
+      }
+    }
+    document.getElementById('sheet-frame').src = url;
+
+    document.getElementById('input-event-name').value = appData.eventName;
+    setPickerFromTime('open', appData.openTime);
+    setPickerFromTime('start', appData.startTime);
+    setPickerFromTime('end', appData.endTime);
+    document.getElementById('input-sheet-url').value = appData.sheetUrl;
+  }
+
+  function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    if (tabName === 'sheet') {
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('tab-sheet').classList.add('active');
+    } else {
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      document.getElementById('tab-todo').classList.add('active');
+    }
+  }
+
+  function renderTodos() {
+    const container = document.getElementById('todo-container');
+    container.innerHTML = '';
+
+    phases.forEach(phase => {
+      const phaseEl = document.createElement('div');
+      phaseEl.className = 'phase-section';
+      
+      const items = appData.todos[phase] || [];
+      let itemsHtml = '';
+
+      if (items.length === 0) {
+        itemsHtml = `<div class="no-task">タスクはありません</div>`;
+      } else {
+        itemsHtml = items.map(item => `
+          <div class="todo-item" id="todo-${item.id}">
+            <div class="todo-main">
+              <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleComplete('${phase}', ${item.id})">
+              <span class="todo-text ${item.completed ? 'completed' : ''}">${item.text}</span>
+              <button type="button" onclick="deleteTodo('${phase}', ${item.id})" style="color:#ef4444; background:none; border:none; font-size:1.2rem; cursor:pointer; padding: 0 4px;">×</button>
+            </div>
+            <div class="timer-control">
+              <span>アラーム時刻:</span>
+              <input type="time" step="60" value="${item.targetTime}" onchange="setTimer('${phase}', ${item.id}, this.value)">
+              <span class="timer-display" id="timer-disp-${item.id}">--分</span>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      phaseEl.innerHTML = `
+        <div class="phase-title">${phase}</div>
+        <div>${itemsHtml}</div>
+        <div class="add-todo-form">
+          <input type="text" id="new-todo-text-${phase}" placeholder="新しいタスクを入力...">
+          <div class="add-todo-row">
+            <input type="time" step="60" id="new-todo-time-${phase}">
+            <button type="button" style="flex:1;" onclick="addTodo('${phase}')">タスクを追加</button>
+          </div>
+        </div>
+      `;
+      container.appendChild(phaseEl);
+    });
+  }
+
+  function addTodo(phase) {
+    const textInput = document.getElementById(`new-todo-text-${phase}`);
+    const timeInput = document.getElementById(`new-todo-time-${phase}`);
+    
+    if (!textInput.value.trim()) return;
+    
+    if (!appData.todos[phase]) appData.todos[phase] = [];
+    appData.todos[phase].push({
+      id: Date.now(),
+      text: textInput.value.trim(),
+      targetTime: timeInput.value || "",
+      completed: false,
+      alerted: false
+    });
+
+    safeSaveData();
+    renderTodos();
+  }
+
+  function toggleComplete(phase, id) {
+    const item = appData.todos[phase].find(i => i.id === id);
+    if (item) {
+      item.completed = !item.completed;
+      safeSaveData();
+      renderTodos();
+    }
+  }
+
+  function deleteTodo(phase, id) {
+    appData.todos[phase] = appData.todos[phase].filter(i => i.id !== id);
+    safeSaveData();
+    renderTodos();
+  }
+
+  function setTimer(phase, id, timeValue) {
+    const item = appData.todos[phase].find(i => i.id === id);
+    if (item) {
+      item.targetTime = timeValue;
+      item.alerted = false;
+      safeSaveData();
+    }
+  }
+
+  function startTimerChecker() {
+    setInterval(() => {
+      const now = new Date();
+      const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      phases.forEach(phase => {
+        (appData.todos[phase] || []).forEach(item => {
+          if (item.targetTime && !item.completed) {
+            const dispEl = document.getElementById(`timer-disp-${item.id}`);
+            if (dispEl) {
+              const [targetH, targetM] = item.targetTime.split(':').map(Number);
+              const targetDate = new Date();
+              targetDate.setHours(targetH, targetM, 0, 0);
+
+              const diffMin = Math.ceil((targetDate - now) / 60000);
+              if (diffMin > 0) {
+                dispEl.innerText = `あと${diffMin}分`;
+              } else if (diffMin === 0) {
+                dispEl.innerText = `時間です！`;
+              } else {
+                dispEl.innerText = `${Math.abs(diffMin)}分経過`;
+              }
+            }
+
+            if (item.targetTime === currentHHMM && !item.alerted) {
+              item.alerted = true;
+              if (appData.alarmEnabled) {
+                triggerFullAlarm(phase, item.text);
+              }
+              safeSaveData();
+            }
+          }
+        });
+      });
+    }, 1000);
+  }
+
+  function triggerFullAlarm(phase, taskText) {
+    document.getElementById('alarm-phase-display').innerText = `フェーズ: ${phase}`;
+    document.getElementById('alarm-task-display').innerText = taskText;
+    document.getElementById('alarm-overlay').classList.remove('hidden');
+
+    playAlarmSound();
+    if (!alarmInterval) {
+      alarmInterval = setInterval(playAlarmSound, 2000);
+    }
+  }
+
+  function dismissAlarm() {
+    document.getElementById('alarm-overlay').classList.add('hidden');
+    if (alarmInterval) {
+      clearInterval(alarmInterval);
+      alarmInterval = null;
+    }
+  }
+
+  function playAlarmSound() {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioCtx = new AudioContextClass();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.2);
+    } catch(e) {
+      console.log('Audio error:', e);
+    }
+  }
+</script>
+</body>
+</html>
