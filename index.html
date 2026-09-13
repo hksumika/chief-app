@@ -128,7 +128,8 @@
 <body>
 
 <header>
-  <span>チーフ支援システム</span>
+  <!-- タイトル部分をクリック可能にし、カーソルをポインター（指マーク）に設定 -->
+  <span onclick="resetApp()" style="cursor: pointer;" title="クリックで初期化">チーフ支援システム</span>
   <button type="button" id="header-alarm-btn" class="alarm-toggle-btn on" onclick="toggleAlarmMaster()">🔔 アラーム: ON</button>
 </header>
 
@@ -545,6 +546,48 @@
     } catch(e) {
       console.log('Audio error:', e);
     }
+  }
+  // ヘッダー判定時のリセット処理
+  function resetApp() {
+    // 誤操作防止の確認ダイアログ
+    const confirmed = confirm("公演情報やToDoの内容をすべて初期化（リセット）しますか？");
+    if (!confirmed) return;
+
+    // データを初期状態に復元
+    appData = {
+      eventName: "", openTime: "", startTime: "", endTime: "",
+      sheetUrl: DEFAULT_SHEET_URL,
+      alarmEnabled: true,
+      todos: {
+        "準備時間": [],
+        "開場中": [],
+        "開演中": [],
+        "終演時": [],
+        "片付け時": []
+      }
+    };
+
+    // 保存データを消去・再保存
+    safeSaveData();
+
+    // 画面表示を初期入力画面に戻す
+    document.getElementById('input-event-name').value = "";
+    document.getElementById('open-hour').value = "00";
+    document.getElementById('open-min').value = "00";
+    document.getElementById('start-hour').value = "00";
+    document.getElementById('start-min').value = "00";
+    document.getElementById('end-hour').value = "00";
+    document.getElementById('end-min').value = "00";
+    document.getElementById('input-sheet-url').value = DEFAULT_SHEET_URL;
+
+    renderTodos();
+    updateAlarmUI();
+
+    // 初期設定カードを表示し、メイン画面を隠す
+    document.getElementById('config-card').classList.remove('hidden');
+    document.getElementById('main-app').classList.add('hidden');
+
+    alert("初期化が完了しました。");
   }
 </script>
 </body>
