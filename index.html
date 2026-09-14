@@ -123,12 +123,62 @@
       font-size: 1.1rem; font-weight: bold; border-radius: 30px; cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
+
+    /* 1. タイトルスプラッシュ画面 */
+    #splash-screen {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      z-index: 10000;
+      transition: transform 0.8s ease-in-out;
+    }
+    #splash-screen.slide-up {
+      transform: translateY(-100%);
+    }
+
+    /* 2. 毎回表示トグルスイッチ */
+    .keep-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .keep-toggle input { display: none; }
+    .toggle-slider {
+      width: 28px; height: 16px; background: #cbd5e1;
+      border-radius: 10px; position: relative; transition: 0.2s;
+    }
+    .toggle-slider::before {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 12px; height: 12px; background: white;
+      border-radius: 50%; transition: 0.2s;
+    }
+    .keep-toggle input:checked + .toggle-slider { background: var(--primary); }
+    .keep-toggle input:checked + .toggle-slider::before { transform: translateX(12px); }
+
+    /* 3. 並び替え用コントロールボタン */
+    .todo-sub-controls { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+    .order-btn {
+      background: #f1f5f9; border: 1px solid var(--border);
+      border-radius: 4px; padding: 2px 6px; font-size: 0.75rem;
+      cursor: pointer; color: var(--text);
+    }
   </style>
 </head>
 <body>
 
+<!-- スプラッシュ画面 -->
+<div id="splash-screen">チーフ支援システム</div>
+
 <header>
-  <!-- タイトル部分をクリック可能にし、カーソルをポインター（指マーク）に設定 -->
   <span onclick="resetApp()" style="cursor: pointer;" title="クリックで初期化">チーフ支援システム</span>
   <button type="button" id="header-alarm-btn" class="alarm-toggle-btn on" onclick="toggleAlarmMaster()">🔔 アラーム: ON</button>
 </header>
@@ -150,7 +200,7 @@
   </div>
   
   <div class="form-group">
-    <label>開場時間（15分刻み）</label>
+    <label>開場時間</label>
     <div class="time-picker-group">
       <select id="open-hour"></select> 時
       <select id="open-min">
@@ -163,7 +213,7 @@
   </div>
 
   <div class="form-group">
-    <label>開演時間（15分刻み）</label>
+    <label>開演時間</label>
     <div class="time-picker-group">
       <select id="start-hour"></select> 時
       <select id="start-min">
@@ -176,7 +226,7 @@
   </div>
 
   <div class="form-group">
-    <label>終演時間（15分刻み）</label>
+    <label>終演時間</label>
     <div class="time-picker-group">
       <select id="end-hour"></select> 時
       <select id="end-min">
@@ -297,6 +347,15 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
+    // 1. スプラッシュ画面アニメーション
+    setTimeout(() => {
+      const splash = document.getElementById('splash-screen');
+      if (splash) {
+        splash.classList.add('slide-up');
+        setTimeout(() => splash.remove(), 800);
+      }
+    }, 1200);
+
     initHourSelects();
     document.getElementById('save-btn').addEventListener('click', saveConfig);
 
@@ -399,16 +458,32 @@
       if (items.length === 0) {
         itemsHtml = `<div class="no-task">タスクはありません</div>`;
       } else {
-        itemsHtml = items.map(item => `
+        itemsHtml = items.map((item, index) => `
           <div class="todo-item" id="todo-${item.id}">
             <div class="todo-main">
               <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleComplete('${phase}', ${item.id})">
               <span class="todo-text ${item.completed ? 'completed' : ''}">${item.text}</span>
+              
+              <!-- 順序変更ボタン -->
+              <div class="todo-sub-controls">
+                <button type="button" class="order-btn" onclick="moveTodo('${phase}', ${index}, -1)">▲</button>
+                <button type="button" class="order-btn" onclick="moveTodo('${phase}', ${index}, 1)">▼</button>
+              </div>
+
               <button type="button" onclick="deleteTodo('${phase}', ${item.id})" style="color:#ef4444; background:none; border:none; font-size:1.2rem; cursor:pointer; padding: 0 4px;">×</button>
             </div>
+
             <div class="timer-control">
-              <span>アラーム時刻:</span>
-              <input type="time" step="60" value="${item.targetTime}" onchange="setTimer('${phase}', ${item.id}, this.value)">
+              <span>アラーム:</span>
+              <input type="time" step="60" value="${item.targetTime || ''}" onchange="setTimer('${phase}', ${item.id}, this.value)">
+              
+              <!-- 毎回表示トグル -->
+              <label class="keep-toggle" style="margin-left:auto;">
+                <input type="checkbox" ${item.keepOnReset ? 'checked' : ''} onchange="toggleKeep('${phase}', ${item.id})">
+                <span class="toggle-slider"></span>
+                毎回表示
+              </label>
+
               <span class="timer-display" id="timer-disp-${item.id}">--分</span>
             </div>
           </div>
@@ -442,9 +517,31 @@
       text: textInput.value.trim(),
       targetTime: timeInput.value || "",
       completed: false,
-      alerted: false
+      alerted: false,
+      keepOnReset: false
     });
 
+    safeSaveData();
+    renderTodos();
+  }
+
+  function toggleKeep(phase, id) {
+    const item = appData.todos[phase].find(i => i.id === id);
+    if (item) {
+      item.keepOnReset = !item.keepOnReset;
+      safeSaveData();
+    }
+  }
+
+  function moveTodo(phase, index, direction) {
+    const list = appData.todos[phase];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    
+    const temp = list[index];
+    list[index] = list[targetIndex];
+    list[targetIndex] = temp;
+    
     safeSaveData();
     renderTodos();
   }
@@ -547,30 +644,31 @@
       console.log('Audio error:', e);
     }
   }
-  // ヘッダー判定時のリセット処理
+
   function resetApp() {
-    // 誤操作防止の確認ダイアログ
-    const confirmed = confirm("公演情報やToDoの内容をすべて初期化（リセット）しますか？");
+    const confirmed = confirm("公演情報やToDoの内容をリセットしますか？\n（※「毎回表示」がオンのToDoは保持されます）");
     if (!confirmed) return;
 
-    // データを初期状態に復元
+    const newTodos = {};
+    phases.forEach(phase => {
+      newTodos[phase] = (appData.todos[phase] || [])
+        .filter(item => item.keepOnReset)
+        .map(item => ({
+          ...item,
+          completed: false,
+          alerted: false
+        }));
+    });
+
     appData = {
       eventName: "", openTime: "", startTime: "", endTime: "",
       sheetUrl: DEFAULT_SHEET_URL,
-      alarmEnabled: true,
-      todos: {
-        "準備時間": [],
-        "開場中": [],
-        "開演中": [],
-        "終演時": [],
-        "片付け時": []
-      }
+      alarmEnabled: appData.alarmEnabled,
+      todos: newTodos
     };
 
-    // 保存データを消去・再保存
     safeSaveData();
 
-    // 画面表示を初期入力画面に戻す
     document.getElementById('input-event-name').value = "";
     document.getElementById('open-hour').value = "00";
     document.getElementById('open-min').value = "00";
@@ -583,7 +681,6 @@
     renderTodos();
     updateAlarmUI();
 
-    // 初期設定カードを表示し、メイン画面を隠す
     document.getElementById('config-card').classList.remove('hidden');
     document.getElementById('main-app').classList.add('hidden');
 
